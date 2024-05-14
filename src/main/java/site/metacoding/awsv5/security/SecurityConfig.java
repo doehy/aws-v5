@@ -13,6 +13,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeRequests()
+                .antMatchers("/favicon.ico").permitAll()
                 .antMatchers("/actuator/**").permitAll() // 헬스체크 요청 경로에 대한 접근을 허용합니다.
                 .anyRequest().authenticated() // 다른 요청에 대해서는 인증이 필요합니다.
                 .and()
