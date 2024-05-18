@@ -18,6 +18,12 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(
+            unique = true,
+            nullable = false
+    )
+    private String userToken;
+
     @Column(nullable = false)
     private String email;
 
@@ -28,19 +34,19 @@ public class User {
     private String provider;
 
     @Column(
-            name = "oauth_id",
             nullable = false
     )
     private String oauthId;
 
     @Column
-    private Integer age;
+    private Long age;
 
     @Column
     private String gender;
 
-    public static User of(String email, String nickname, String provider, String oauthId) {
+    public static User of(String userToken, String email, String nickname, String provider, String oauthId) {
         return User.builder()
+                .userToken(userToken)
                 .email(email)
                 .nickname(nickname)
                 .provider(provider)
