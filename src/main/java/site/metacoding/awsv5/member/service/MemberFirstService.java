@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class MemberFirstService {
-    private final MemberService userService;
+//    private final MemberService userService;
 
 //    @Transactional
 //    public void delete(Long userId) {

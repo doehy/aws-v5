@@ -10,7 +10,6 @@ import site.metacoding.awsv5.member.entity.Member;
 @AllArgsConstructor
 public class MemberProfileResponse {
     private Long id;
-    private String provider;
     private String nickname;
     private String email;
     private Long age;
@@ -19,7 +18,6 @@ public class MemberProfileResponse {
     public static MemberProfileResponse from(Member user) {
         return MemberProfileResponse.builder()
                 .id(user.getId())
-                .provider(user.getProvider())
                 .nickname(user.getNickname())
                 .email(user.getEmail())
                 .age(user.getAge())
