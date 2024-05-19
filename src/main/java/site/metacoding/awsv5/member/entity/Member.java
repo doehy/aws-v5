@@ -1,4 +1,4 @@
-package site.metacoding.awsv5.user.entity;
+package site.metacoding.awsv5.member.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,17 +12,11 @@ import javax.persistence.*;
 @Builder
 @NoArgsConstructor
 @Getter
-public class User {
+public class Member {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(
-            unique = true,
-            nullable = false
-    )
-    private String userToken;
 
     @Column(nullable = false)
     private String email;
@@ -33,10 +27,10 @@ public class User {
     @Column(nullable = false)
     private String provider;
 
-    @Column(
-            nullable = false
-    )
-    private String oauthId;
+//    @Column(
+//            nullable = false
+//    )
+//    private String oauthId;
 
     @Column
     private Long age;
@@ -44,13 +38,12 @@ public class User {
     @Column
     private String gender;
 
-    public static User of(String userToken, String email, String nickname, String provider, String oauthId) {
-        return User.builder()
-                .userToken(userToken)
+    public static Member of(String email, String nickname, String provider, String oauthId) {
+        return Member.builder()
                 .email(email)
                 .nickname(nickname)
                 .provider(provider)
-                .oauthId(oauthId)
+//                .oauthId(oauthId)
                 .build();
     }
 }

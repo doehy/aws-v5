@@ -1,26 +1,24 @@
-package site.metacoding.awsv5.user.api.response;
+package site.metacoding.awsv5.member.api.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import site.metacoding.awsv5.user.entity.User;
+import site.metacoding.awsv5.member.entity.Member;
 
 @Getter
 @Builder
 @AllArgsConstructor
-public class UserProfileResponse {
+public class MemberProfileResponse {
     private Long id;
-    private String userToken;
     private String provider;
     private String nickname;
     private String email;
     private Long age;
     private String gender;
 
-    public static UserProfileResponse from(User user) {
-        return UserProfileResponse.builder()
+    public static MemberProfileResponse from(Member user) {
+        return MemberProfileResponse.builder()
                 .id(user.getId())
-                .userToken(user.getUserToken())
                 .provider(user.getProvider())
                 .nickname(user.getNickname())
                 .email(user.getEmail())

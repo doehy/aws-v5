@@ -1,4 +1,4 @@
-package site.metacoding.awsv5.user.api.request;
+package site.metacoding.awsv5.member.api.request;
 
 import lombok.Getter;
 

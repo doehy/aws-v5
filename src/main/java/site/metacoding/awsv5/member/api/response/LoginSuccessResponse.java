@@ -1,4 +1,4 @@
-package site.metacoding.awsv5.user.api.response;
+package site.metacoding.awsv5.member.api.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

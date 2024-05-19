@@ -1,24 +1,21 @@
-package site.metacoding.awsv5.user.service;
+package site.metacoding.awsv5.member.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.metacoding.awsv5.commons.exception.CustomException;
 import site.metacoding.awsv5.commons.exception.ErrorCode;
-import site.metacoding.awsv5.user.api.response.UserProfileResponse;
-import site.metacoding.awsv5.user.entity.User;
-import site.metacoding.awsv5.user.repository.UserRepository;
-
-import java.util.UUID;
+import site.metacoding.awsv5.member.api.response.MemberProfileResponse;
+import site.metacoding.awsv5.member.entity.Member;
+import site.metacoding.awsv5.member.repository.MemberRepository;
 
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class MemberService {
 
     public static final String DEFAULT_ROLE = "ROLE_USER";
 
-    private final UserRepository userRepository;
-//    private final RefreshTokenRepository refreshTokenRepository;
+    private final MemberRepository userRepository;
 
 //    @Transactional
 //    public AuthUserInfo getOrRegister(OAuthUserInfo oauthUserInfo) {
@@ -37,16 +34,16 @@ public class UserService {
 //    }
 
     @Transactional
-    public User save(User unsavedUser) {
+    public Member save(Member unsavedUser) {
         return userRepository.save(unsavedUser);
     }
 
     @Transactional(readOnly = true)
-    public UserProfileResponse getUserProfile(Long userId) {
-        User user = userRepository.findById(userId)
+    public MemberProfileResponse getUserProfile(Long userId) {
+        Member user = userRepository.findById(userId)
                 .orElseThrow(() ->new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        return UserProfileResponse.from(user);
+        return MemberProfileResponse.from(user);
     }
 
 //    @Transactional
