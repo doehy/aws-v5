@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import site.metacoding.awsv5.member.dto.LoginDto;
 import site.metacoding.awsv5.member.dto.SignupDto;
 import site.metacoding.awsv5.member.entity.Member;
 import site.metacoding.awsv5.member.service.AuthService;
@@ -22,6 +23,11 @@ public class AuthController {
     public void signup(@Valid SignupDto signupDto, BindingResult bindingResult) {
         Member member = signupDto.toEntity();
         authService.register(member);
+    }
+
+    @PostMapping("/auth/login")
+    public void login(@Valid LoginDto loginDto, BindingResult bindingResult) {
+        authService.login(loginDto);
     }
 
 
