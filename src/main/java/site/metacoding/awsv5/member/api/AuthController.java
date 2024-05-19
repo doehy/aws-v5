@@ -17,13 +17,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/auth/signup")
-    public void signup(@Valid @RequestBody SignupDto signupDto, BindingResult bindingResult) {
+    public void signup(@RequestBody SignupDto signupDto, BindingResult bindingResult) {
         Member member = signupDto.toEntity();
         authService.register(member);
     }
 
     @PostMapping("/auth/login")
-    public void login(@Valid @RequestBody LoginDto loginDto, BindingResult bindingResult) {
+    public void login(@RequestBody LoginDto loginDto, BindingResult bindingResult) {
         authService.login(loginDto);
     }
 }
