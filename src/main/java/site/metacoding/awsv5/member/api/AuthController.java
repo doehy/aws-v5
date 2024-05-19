@@ -23,4 +23,6 @@ public class AuthController {
         Member member = signupDto.toEntity();
         authService.register(member);
     }
+
+
 }

@@ -26,16 +26,7 @@ public class SecurityConfig {
                 .antMatchers("/static/css/**").permitAll()
                 .antMatchers("/static/js/**").permitAll()
                 .antMatchers("/static/file/**").permitAll()
-                .anyRequest().permitAll()
-                .and()
-                .formLogin()
-                .loginPage("/require-login")
-                .loginProcessingUrl("/login")
-                .and()
-                .logout()
-                .logoutSuccessUrl("/")
-                .and()
-                .exceptionHandling().accessDeniedPage("/fail-authorize");
+                .anyRequest().permitAll();
 
         return http.build();
     }
