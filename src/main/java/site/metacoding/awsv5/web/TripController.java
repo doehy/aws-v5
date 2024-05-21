@@ -18,7 +18,8 @@ public class TripController {
 
     @PostMapping("/plan")
     public String makePlan(@RequestBody PlanDto planDto) throws JSONException, IOException {
-        String makedPlan = tripService.makePlan(planDto);
-        return makedPlan;
+//        String makedPlan = tripService.makePlan(planDto);
+//        return makedPlan;
+        return "1";
     }
 }
