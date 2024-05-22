@@ -27,9 +27,9 @@ public class TripController {
 
     @PostMapping("/plan")
     public Map<String, String> makePlan(@RequestBody PlanDto planDto) throws JSONException, IOException {
-        // String makedPlan = tripService.makePlan(planDto);
+        String makedPlan = tripService.makePlan(planDto);
         Map<String, String> response = new HashMap<>();
-        response.put("example", "1"); // `example` 필드에 "1"을 반환
+        response.put("example", makedPlan); // `example` 필드에 "1"을 반환
         return response;
     }
 }
