@@ -27,8 +27,10 @@ import javax.net.ssl.HttpsURLConnection;
 public class TripService {
 
     private static final String GOOGLE_API_KEY = "AIzaSyD6ViW6gPSQhClKclXm9L19pYK7tupWo8E";
+    private Set<String> visitedRestaurants = new HashSet<>();
     // 장소를 찾는 메서드
     public List<Place> findPlace(String place, List<String> tagList) throws JSONException {
+        Set<Place> placeSet = new HashSet<>();
         // 태그를 쿼리로 변환
         String query = String.join(", ", tagList) + " tourist attraction in " + place;
         System.out.println(query);
@@ -36,15 +38,10 @@ public class TripService {
         try {
             // 쿼리를 영어로 번역
             translatedQuery = translateText(query);
-        } catch (com.deepl.api.DeepLException e) {
+        } catch (com.deepl.api.DeepLException | InterruptedException e) {
             e.printStackTrace();
             // 번역 API 예외 처리 로직
             return new ArrayList<>(); // 번역 실패 시 빈 리스트 반환
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            // 스레드 인터럽트 예외 처리 로직
-            Thread.currentThread().interrupt(); // 인터럽트 상태를 다시 설정
-            return new ArrayList<>(); // 인터럽트 발생 시 빈 리스트 반환
         }
         System.out.println(translatedQuery);
 
@@ -54,7 +51,7 @@ public class TripService {
         // HTTP 요청 수행
         String response = null;
         try {
-            response = performHttpPostRequest("https://places.googleapis.com/v1/places:searchText", data.toString(), "AIzaSyD6ViW6gPSQhClKclXm9L19pYK7tupWo8E");
+            response = performHttpPostRequest("https://places.googleapis.com/v1/places:searchText", data.toString(), GOOGLE_API_KEY);
         } catch (Exception e) {
             e.printStackTrace();
             return new ArrayList<>();
@@ -64,45 +61,54 @@ public class TripService {
         JSONArray placesArray;
         try {
             jsonResponse = new JSONObject(response);
-            // 여기서는 첫 번째 키에 대한 값을 JSONArray로 추출
-            String firstKey;
-            Iterator<String> keys = jsonResponse.keys();
-            if (keys.hasNext()) {
-                firstKey = keys.next();
-            } else {
-                firstKey = null;
-            }
-            placesArray = jsonResponse.getJSONArray(firstKey);
+            placesArray = jsonResponse.getJSONArray("places"); // API 응답의 구조에 따라 변경
         } catch (JSONException e) {
             e.printStackTrace();
             return new ArrayList<>();
         }
-        List<Place> places = new ArrayList<>();
         for (int i = 0; i < placesArray.length(); i++) {
             JSONObject placeObj = placesArray.getJSONObject(i);
             Place p = new Place();
-            p.setId(placeObj.getString("id"));
-            p.setRating(placeObj.getDouble("rating"));
+            p.setId(placeObj.optString("id", "unknown_id")); // 기본값으로 "unknown_id" 설정
+            p.setRating(placeObj.optDouble("rating", 0.0));
 
-            JSONObject locObj = placeObj.getJSONObject("location");
-            locate loc = new locate();
-            loc.setLatitude(locObj.getDouble("latitude"));
-            loc.setLongitude(locObj.getDouble("longitude"));
+            try {
+                JSONObject locObj = placeObj.getJSONObject("location");
+                locate loc = new locate();
+                loc.setLatitude(locObj.getDouble("latitude"));
+                loc.setLongitude(locObj.getDouble("longitude"));
+                p.setLocation(loc);
+            } catch (JSONException e) {
+                System.out.println("Location information not found in JSON object: " + placeObj);
+                continue; // 키가 없을 경우 다음 장소로 넘어감
+            }
 
-            JSONObject nameObj = placeObj.getJSONObject("displayName");
-            name n = new name();
-            n.setText(nameObj.getString("text"));
-            n.setLanguageCode(nameObj.getString("languageCode"));
+            // name 필드가 없는 경우 기본값 설정
+            String nameText = placeObj.optString("displayName", null);
+            if (nameText == null || nameText.isEmpty()) {
+                // 기본값 설정
+                nameText = "Unknown Place";
+            } else {
+                // JSON 형식의 문자열이 아닌 순수 문자열을 사용하도록 처리
+                try {
+                    JSONObject displayNameJson = new JSONObject(nameText);
+                    nameText = displayNameJson.optString("text", "Unknown Place");
+                } catch (JSONException e) {
+                    System.out.println("Invalid JSON format for 'displayName': " + nameText);
+                    nameText = "Unknown Place";
+                }
+            }
+            p.setDisplayName(new name(nameText, "ko")); // languageCode를 "ko"로 설정
 
-            p.setLocation(loc);
-            p.setDisplayName(n);
-            places.add(p);
+            placeSet.add(p);
         }
 
-        places.sort((p1, p2) -> {
-            return Double.compare(p2.getRating(), p1.getRating()); // 내림차순 정렬
-        });
+        List<Place> places = new ArrayList<>(placeSet);
+        places.sort((p1, p2) -> Double.compare(p2.getRating(), p1.getRating())); // 내림차순 정렬
 
+        if (places.isEmpty()) {
+            System.out.println("No places found with the given tags and location.");
+        }
         return places;
     }
 
@@ -120,7 +126,7 @@ public class TripService {
         return result != null ? result.getText() : "";
     }
 
-    private String performHttpPostRequest(String urlString, String jsonData, String apiKey) throws IOException, MalformedURLException, ProtocolException {
+    private String performHttpPostRequest(String urlString, String jsonData, String apiKey) throws IOException {
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
@@ -129,12 +135,17 @@ public class TripService {
         connection.setRequestProperty("X-Goog-FieldMask", "places.id,places.rating,places.location,places.displayName");
         connection.setDoOutput(true);
 
-        try(OutputStream os = connection.getOutputStream()) {
+        try (OutputStream os = connection.getOutputStream()) {
             byte[] input = jsonData.getBytes("utf-8");
             os.write(input, 0, input.length);
         }
 
-        try(BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "utf-8"))) {
+        int responseCode = connection.getResponseCode();
+        if (responseCode != HttpURLConnection.HTTP_OK) {
+            throw new IOException("HTTP error code: " + responseCode);
+        }
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "utf-8"))) {
             StringBuilder response = new StringBuilder();
             String responseLine;
             while ((responseLine = br.readLine()) != null) {
@@ -147,6 +158,14 @@ public class TripService {
     public static class name {
         String text = "";
         String languageCode = "";
+
+        public name() {
+        }
+
+        public name(String text, String languageCode) {
+            this.text = text;
+            this.languageCode = languageCode;
+        }
 
         public String getText() {
             return text;
@@ -258,8 +277,9 @@ public class TripService {
             placeJson.put("id", this.id);
             placeJson.put("location", this.location.toJson());  // locate가 toJson 메소드를 가지고 있다고 가정
             placeJson.put("rating", this.rating);
-            placeJson.put("displayName", this.displayName.toJson());  // name이 toJson 메소드를 가지고 있다고 가정
-            return placeJson;
+            if (this.displayName != null) {
+                placeJson.put("displayName", this.displayName.toJson());
+            }return placeJson;
         }
     }
 
@@ -306,6 +326,10 @@ public class TripService {
     public int[][] distanceMatrix(int day, List<Place> sortedPlaces) {
         int size = day * 3;
         int[][] matrix = new int[size][size];
+
+        if (sortedPlaces.size() < size) {
+            throw new IllegalArgumentException("Not enough places to create a distance matrix for the given number of days.");
+        }
 
         for (int i = 0; i < size; i++) {
             for (int j = i + 1; j < size; j++) {
@@ -398,15 +422,20 @@ public class TripService {
         }
 
         String urlStr = "https://places.googleapis.com/v1/places:searchNearby";
-        JSONObject payload = new JSONObject();
-        payload.put("includedTypes", new JSONArray(Arrays.asList("restaurant")));
-        payload.put("maxResultCount", 10);
-        JSONObject locationRestriction = new JSONObject();
-        locationRestriction.put("circle", new JSONObject()
-                .put("center", new JSONObject()
+        int radius = 500;
+        JSONObject responseJson = null;
+        JSONArray places = new JSONArray();
+
+        while (radius <= 2000 && (places.length() == 0 || responseJson == null)) {
+            JSONObject payload = new JSONObject();
+            payload.put("includedTypes", new JSONArray(Arrays.asList("restaurant")));
+            payload.put("maxResultCount", 10);
+            JSONObject locationRestriction = new JSONObject();
+            locationRestriction.put("circle", new JSONObject()
+                    .put("center", new JSONObject()
                         .put("latitude", lat)
                         .put("longitude", lon))
-                .put("radius", 500.0));
+                .put("radius", radius));
         payload.put("locationRestriction", locationRestriction);
         payload.put("languageCode", "ko");
 
@@ -430,22 +459,46 @@ public class TripService {
                 response.append(responseLine.trim());
             }
 
-            JSONObject responseJson = new JSONObject(response.toString());
-            JSONArray places = responseJson.getJSONArray("places");
-            // 최고 평점 레스토랑 찾기
-            if (places.length() > 0) {
-                return places.getJSONObject(0); // 최고 평점 레스토랑 반환
-            } else {
-                return null;
+            responseJson = new JSONObject(response.toString());
+            try {
+                places = responseJson.getJSONArray("places");
+            } catch (JSONException e) {
+                System.out.println("Key 'places' not found in JSON response: " + responseJson);
+                places = new JSONArray(); // 'places' 키가 없을 경우 빈 배열로 설정
             }
         } catch (JSONException e) {
             e.printStackTrace();
-            return null;
         }
+            radius += 500; // 반경을 500씩 증가시킴
+    }
+
+        // 최고 평점 레스토랑 찾기
+        for (int i = 0; i < places.length(); i++) {
+            JSONObject restaurant = places.getJSONObject(i);
+            String restaurantId = restaurant.getString("id");
+            if (!visitedRestaurants.contains(restaurantId)) {
+                visitedRestaurants.add(restaurantId);
+                return restaurant; // 방문하지 않은 최고 평점 레스토랑 반환
+            }
+        }
+
+        return getFallbackRestaurant(lat, lon); // 레스토랑이 없을 경우 fallback 레스토랑 반환
+    }
+
+    private JSONObject getFallbackRestaurant(double lat, double lon) throws JSONException {
+        JSONObject fallbackRestaurant = new JSONObject();
+        fallbackRestaurant.put("id", "fallback_id");
+        fallbackRestaurant.put("rating", 0);
+        fallbackRestaurant.put("location", new JSONObject().put("latitude", lat).put("longitude", lon));
+        fallbackRestaurant.put("displayName", new JSONObject().put("text", "Fallback Restaurant").put("languageCode", "ko"));
+        return fallbackRestaurant;
     }
 
     public String autoMode(String place, List<String> tagList, int day) throws IOException, JSONException {
         List<Place> places = findPlace(place, tagList);
+        if (places.size() < day * 3) {
+            throw new IllegalArgumentException("Not enough places found for the given number of days and tags.");
+        }
         int[][] distanceMatrix = distanceMatrix(day, places);
         int[][] mstMatrix = primAlgorithmFinal(distanceMatrix);
         List<Integer> route = findRoute(mstMatrix);
@@ -467,31 +520,32 @@ public class TripService {
             return "";
         }
 
-        List<JSONObject> orderedPlaces = new ArrayList<>();
-        for (int i = 0; i < day * 3; i++) {
-            int idx = i * 2;
-            JSONObject jsonPlace = places.get(route.get(i)).toJson();  // 관광지를 JSON 객체로 추가
 
-            if (idx % 3 == 0) { // 아침
-                JSONObject rest = findRestaurant(places.get(route.get(i)), places.get(route.get(i)));
-                orderedPlaces.add(rest);
-                orderedPlaces.add(jsonPlace);
-            } else if(idx % 3 == 2){ // 저녁
-                JSONObject rest = findRestaurant(places.get(route.get(i)), places.get(route.get(i)));
-                orderedPlaces.add(rest);
-                orderedPlaces.add(jsonPlace);
-            } else { // 점심
-                JSONObject rest = findRestaurant(places.get(route.get(i - 1)), places.get(route.get(i)));
-                orderedPlaces.add(jsonPlace);
-                orderedPlaces.add(rest);
+        JSONArray jsonPlacesPerDay = new JSONArray();
+        for (int i = 0; i < day; i++) {
+            JSONArray dayArray = new JSONArray();
+            for (int j = 0; j < 3; j++) {
+                int idx = i * 3 + j;
+                JSONObject jsonPlace = places.get(idx).toJson();  // 관광지를 JSON 객체로 추가
+
+                if (j == 0) { // 아침
+                    JSONObject rest = findRestaurant(places.get(idx), places.get(idx));
+                    dayArray.put(rest);
+                    dayArray.put(jsonPlace);
+                } else if (j == 2) { // 저녁
+                    JSONObject rest = findRestaurant(places.get(idx), places.get(idx));
+                    dayArray.put(jsonPlace);
+                    dayArray.put(rest);
+                } else { // 점심
+                    JSONObject rest = findRestaurant(places.get(idx - 1), places.get(idx));
+                    dayArray.put(rest);
+                    dayArray.put(jsonPlace);
+                }
             }
+            jsonPlacesPerDay.put(dayArray);
         }
 
-        JSONArray jsonPlaces = new JSONArray();
-        for (JSONObject placeObj : orderedPlaces) {
-            jsonPlaces.put(placeObj);
-        }
-        return jsonPlaces.toString(4);
+        return jsonPlacesPerDay.toString(4);
     }
 
     public List<Place> manualMode(String place, List<String> tagList) throws JSONException {
