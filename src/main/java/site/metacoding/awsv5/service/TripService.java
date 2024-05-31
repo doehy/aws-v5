@@ -31,7 +31,6 @@ public class TripService {
     // 장소를 찾는 메서드
     public List<Place> findPlace(String place, List<String> tagList) throws JSONException {
         Set<Place> placeSet = new HashSet<>();
-        // 태그를 쿼리로 변환
         String query = String.join(", ", tagList) + " tourist attraction in " + place;
         System.out.println(query);
         String translatedQuery = null;
@@ -40,7 +39,6 @@ public class TripService {
             translatedQuery = translateText(query);
         } catch (com.deepl.api.DeepLException | InterruptedException e) {
             e.printStackTrace();
-            // 번역 API 예외 처리 로직
             return new ArrayList<>(); // 번역 실패 시 빈 리스트 반환
         }
         System.out.println(translatedQuery);
@@ -48,7 +46,6 @@ public class TripService {
         JSONObject data = new JSONObject();
         data.put("textQuery", translatedQuery);
         data.put("languageCode", "ko");
-        // HTTP 요청 수행
         String response = null;
         try {
             response = performHttpPostRequest("https://places.googleapis.com/v1/places:searchText", data.toString(), GOOGLE_API_KEY);
@@ -56,7 +53,10 @@ public class TripService {
             e.printStackTrace();
             return new ArrayList<>();
         }
-        // 결과 파싱
+
+        // 결과를 출력하여 디버깅
+        System.out.println("API Response: " + response);
+
         JSONObject jsonResponse;
         JSONArray placesArray;
         try {
@@ -66,6 +66,7 @@ public class TripService {
             e.printStackTrace();
             return new ArrayList<>();
         }
+
         for (int i = 0; i < placesArray.length(); i++) {
             JSONObject placeObj = placesArray.getJSONObject(i);
             Place p = new Place();
@@ -109,6 +110,7 @@ public class TripService {
         if (places.isEmpty()) {
             System.out.println("No places found with the given tags and location.");
         }
+
         return places;
     }
 
@@ -426,7 +428,7 @@ public class TripService {
         JSONObject responseJson = null;
         JSONArray places = new JSONArray();
 
-        while (radius <= 2000 && (places.length() == 0 || responseJson == null)) {
+        while (radius <= 3000 && (places.length() == 0 || responseJson == null)) {
             JSONObject payload = new JSONObject();
             payload.put("includedTypes", new JSONArray(Arrays.asList("restaurant")));
             payload.put("maxResultCount", 10);
