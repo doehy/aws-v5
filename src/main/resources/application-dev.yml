@@ -31,4 +31,4 @@ spring:
 logging:
   level:
     '[org.springframework.boot.web]': DEBUG
-# debug info warn error  
+# debug info warn error
